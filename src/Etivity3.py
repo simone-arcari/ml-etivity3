@@ -1,9 +1,25 @@
+# ======================================================================================
+# Autore:     Simone Arcari
+# Data:       01/05/2025
+# Descrizione: 
+#   Questo script implementa una classe `DataAnalyzer` in grado di eseguire un'analisi 
+#   automatica di dataset forniti in formato CSV o DataFrame. Include rilevamento e 
+#   classificazione automatica dei tipi di variabili, preprocessamento dei dati, 
+#   analisi esplorativa, clustering (K-Means e gerarchico) e modelli di classificazione 
+#   supervisionata (regressione logistica e albero decisionale), con visualizzazioni 
+#   grafiche per una migliore interpretazione dei risultati.
+# ======================================================================================
+
+
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.cluster import KMeans, AgglomerativeClustering
 from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
+from sklearn.linear_model import LinearRegression
+from sklearn.tree import DecisionTreeRegressor
+from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import silhouette_score, accuracy_score
 import matplotlib.pyplot as plt
@@ -227,7 +243,37 @@ class DataAnalyzer:
         
         else:
             print("\nProblema di regressione rilevato")
-            # (Implementare modelli di regressione se necessario)
+        
+            # Regressione Lineare
+            print("\nRegressione Lineare:")
+            lr = LinearRegression()
+            lr.fit(X_train, y_train)
+            y_pred = lr.predict(X_test)
+            mse = mean_squared_error(y_test, y_pred)
+            r2 = r2_score(y_test, y_pred)
+            print(f"Mean Squared Error: {mse:.3f}")
+            print(f"R² (coefficiente di determinazione): {r2:.3f}")
+            
+            # Albero Regressore
+            print("\nAlbero Regressore:")
+            dt = DecisionTreeRegressor(max_depth=3)
+            dt.fit(X_train, y_train)
+            y_pred = dt.predict(X_test)
+            mse = mean_squared_error(y_test, y_pred)
+            r2 = r2_score(y_test, y_pred)
+            print(f"Mean Squared Error: {mse:.3f}")
+            print(f"R² (coefficiente di determinazione): {r2:.3f}")
+            
+            # Importanza delle feature
+            if hasattr(dt, 'feature_importances_'):
+                print("\nImportanza delle feature (Albero Regressore):")
+                for col, importance in zip(X.columns, dt.feature_importances_):
+                    print(f"- {col}: {importance:.3f}")
+                
+                plt.figure(figsize=(8, 5))
+                plt.barh(X.columns, dt.feature_importances_)
+                plt.title("Importanza delle Feature (Regressore)")
+                plt.show()
     
     def _analyze_categorical_relationship(self, var1, var2):
         """Analizza la relazione tra due variabili categoriche"""
@@ -249,28 +295,3 @@ class DataAnalyzer:
         sns.heatmap(contingency_table, annot=True, fmt='d', cmap='Blues')
         plt.title(f"Tabella di contingenza: {var1} vs {var2}")
         plt.show()
-
-
-# Esempio di utilizzo
-if __name__ == "__main__":
-    # Caricamento dati (esempio con dataset Iris)
-    from sklearn.datasets import load_iris
-    iris = load_iris()
-    df = pd.DataFrame(data=iris.data, columns=iris.feature_names)
-    df['species'] = iris.target_names[iris.target]
-    
-    # Creazione analizzatore
-    analyzer = DataAnalyzer(df, target_variable='species')
-    
-    # Preprocessing
-    analyzer.preprocess_data()
-    
-    # Analisi automatica
-    analyzer.analyze()
-    
-    # Analisi specifica tra due variabili categoriche
-    if 'species' in df.columns and 'petal length (cm)' in df.columns:
-        # Per questo esempio, convertiamo una variabile numerica in categorica
-        df['petal_length_cat'] = pd.cut(df['petal length (cm)'], bins=3, 
-                                       labels=['short', 'medium', 'long'])
-        analyzer._analyze_categorical_relationship('species', 'petal_length_cat')
