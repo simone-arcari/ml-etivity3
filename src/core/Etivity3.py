@@ -10,7 +10,6 @@
 #   grafiche per una migliore interpretazione dei risultati.
 # ======================================================================================
 
-
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import LabelEncoder, StandardScaler
@@ -185,8 +184,8 @@ class DataAnalyzer:
                 plt.title("Visualizzazione Clusters (K-Means)")
                 plt.show()
         
-        # Clustering gerarchico (se meno di 100 osservazioni)
-        if len(self.df) < 100 and len(numeric_cols) >= 2:
+        # Clustering gerarchico (se meno di 1000 osservazioni)
+        if len(self.df) < 1000 and len(numeric_cols) >= 2:
             print("\nClustering Gerarchico:")
             agg = AgglomerativeClustering(n_clusters=None, distance_threshold=0)
             labels = agg.fit_predict(self.encoded_df[numeric_cols])

@@ -1,6 +1,22 @@
 from sklearn.datasets import load_iris
-from Etivity3 import DataAnalyzer
 import pandas as pd
+
+import os
+import sys
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), ".")))
+
+import signal
+from PyQt5.QtCore import QTimer
+from PyQt5.QtWidgets import QApplication
+from gui.Etivity3Window import DatasetSelectorWindow
+
+def handle_sigint(signum, frame):
+    """Gestisce il segnale SIGINT per terminare l'applicazione"""
+    print("Intercettato Ctrl+C, chiusura dell'applicazione...")
+    QApplication.quit()
+
+
 
 if __name__ == "__main__":
     print(
@@ -13,6 +29,27 @@ if __name__ == "__main__":
     "\n                                __/ |        "
     "\n                               |___/         "
     )
+
+    # configura il gestore per il segnale SIGINT
+    signal.signal(signal.SIGINT, handle_sigint)
+
+    # Avvia applicazione Qt
+    app = QApplication(sys.argv)
+
+    # Per rilevare SIGINT
+    timer = QTimer()
+    timer.start(100)
+    timer.timeout.connect(lambda: None) # tiene vivo il loop di eventi per rilevare SIGINT
+
+    # Lancia finestra grafica
+    window = DatasetSelectorWindow()
+    window.show()
+    sys.exit(app.exec_())
+
+
+
+
+
 
     # Caricamento dati (esempio con dataset Iris)
     iris = load_iris()
