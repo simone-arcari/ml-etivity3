@@ -11,8 +11,8 @@
 #
 #   - La finestra principale consente la selezione di un dataset e la variabile target.
 #   - Fornisce un pulsante per avviare l'analisi sul dataset selezionato.
-#       > [variabile target selezionata]      --> 
-#       > [variabile target NON selezionata]  --> 
+#       <> [variabile target selezionata]      --> ANALISI SUPERVISIONATA
+#       <> [variabile target NON selezionata]  --> ANALISI NON SUPERVISIONATA
 #   - Un secondo pulsante permette di analizzare la relazione tra due variabili tramite
 #     un dialogo di selezione (Test Chi-Quadro).
 # ======================================================================================
@@ -83,7 +83,7 @@ class DatasetSelectorWindow(QMainWindow):
         layout.addWidget(self.output)
 
         # Bottone
-        self.run_button = QPushButton("Conferma selezione")
+        self.run_button = QPushButton("Analizza Dataset")
         self.run_button.clicked.connect(self.on_run_clicked)
         layout.addWidget(self.run_button)
 

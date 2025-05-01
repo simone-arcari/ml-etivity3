@@ -24,6 +24,8 @@ from sklearn.metrics import silhouette_score, accuracy_score
 import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy.stats import chi2_contingency
+from scipy.cluster.hierarchy import dendrogram, linkage
+
 
 class DataAnalyzer:
     def __init__(self, data_path, target_variable=None):
@@ -148,54 +150,104 @@ class DataAnalyzer:
             plt.show()
     
     def _unsupervised_analysis(self):
-        """Analisi non supervisionata"""
+        """Esegue analisi non supervisionata automatica basata sui tipi di variabili.
+    
+            Strategie applicate:
+            1. K-Means clustering con selezione ottimale del k usando silhouette score
+            2. Clustering gerarchico con identificazione automatica del punto di taglio
+            3. Visualizzazione comparativa dei risultati
+            
+            Output:
+            - Grafico silhouette scores per K-Means
+            - Scatter plot dei cluster K-Means
+            - Dendrogramma con taglio ottimale
+            - Scatter plot dei cluster gerarchici
+        """
         print("\n2. ANALISI NON SUPERVISIONATA:")
         
-        # Solo se abbiamo almeno 2 variabili numeriche
+        # Seleziona solo variabili numeriche
         numeric_cols = [col for col, typ in self.var_types.items() 
-                       if typ in ['numeric_continuous', 'numeric_discrete']]
+                    if typ in ['numeric_continuous', 'numeric_discrete']]
         
-        if len(numeric_cols) >= 2:
-            # K-Means Clustering
-            print("\nClustering con K-Means:")
-            X = self.encoded_df[numeric_cols]
-            
-            # Determinazione ottimale del numero di cluster
-            silhouette_scores = []
-            for k in range(2, min(6, len(X)+1)):
-                kmeans = KMeans(n_clusters=k, random_state=42)
-                labels = kmeans.fit_predict(X)
-                score = silhouette_score(X, labels)
-                silhouette_scores.append(score)
-                print(f"Silhouette score per k={k}: {score:.3f}")
-            
-            best_k = np.argmax(silhouette_scores) + 2  # +2 perché partiamo da k=2
-            print(f"\nNumero ottimale di cluster: {best_k}")
-            
-            # Esecuzione con il miglior k
-            kmeans = KMeans(n_clusters=best_k, random_state=42)
-            self.df['cluster'] = kmeans.fit_predict(X)
-            
-            # Visualizzazione clusters
-            if len(numeric_cols) >= 2:
-                plt.figure(figsize=(8, 6))
-                sns.scatterplot(data=self.df, x=numeric_cols[0], y=numeric_cols[1], 
-                                hue='cluster', palette='viridis')
-                plt.title("Visualizzazione Clusters (K-Means)")
-                plt.show()
+        if len(numeric_cols) < 2:
+            print("Attenzione: Almeno 2 variabili numeriche richieste per il clustering.")
+            return
         
-        # Clustering gerarchico (se meno di 1000 osservazioni)
-        if len(self.df) < 1000 and len(numeric_cols) >= 2:
-            print("\nClustering Gerarchico:")
-            agg = AgglomerativeClustering(n_clusters=None, distance_threshold=0)
-            labels = agg.fit_predict(self.encoded_df[numeric_cols])
+        X = self.encoded_df[numeric_cols]
+        
+        # 1. K-MEANS CLUSTERING
+        print("\n[1/2] CLUSTERING K-MEANS")
+        
+        MIN_CLUSTERS = 2
+        MAX_CLUSTERS = min(10, len(X)//2)
+        
+        silhouette_scores = []
+        k_values = range(MIN_CLUSTERS, MAX_CLUSTERS+1)
+        
+        for k in k_values:
+            kmeans = KMeans(n_clusters=k, random_state=42, n_init=10)
+            labels = kmeans.fit_predict(X)
+            silhouette_scores.append(silhouette_score(X, labels))
+            print(f" - k={k}: Silhouette={silhouette_scores[-1]:.3f}")
+
+        best_k = k_values[np.argmax(silhouette_scores)]
+        print(f"\nNumero ottimale di cluster: {best_k} (silhouette={max(silhouette_scores):.3f})")
+        
+        final_kmeans = KMeans(n_clusters=best_k, random_state=42, n_init=10)
+        self.df['kmeans_cluster'] = final_kmeans.fit_predict(X)
+        
+        # 2. HIERARCHICAL CLUSTERING
+        if len(self.df) < 1000:
+            print("\n[2/2] CLUSTERING GERARCHICO")
             
-            # Dendrogramma
-            from scipy.cluster.hierarchy import dendrogram, linkage
-            Z = linkage(self.encoded_df[numeric_cols], 'ward')
-            plt.figure(figsize=(12, 6))
-            dendrogram(Z)
-            plt.title("Dendrogramma - Clustering Gerarchico")
+            Z = linkage(X, method='ward')
+            
+            # Identificazione punto di taglio
+            last_merges = Z[-10:, 2]
+            merge_diffs = np.diff(last_merges[::-1])
+            relative_diffs = merge_diffs[:-1]/merge_diffs[1:]
+            optimal_idx = np.argmax(relative_diffs) + 1
+            cutoff = last_merges[::-1][optimal_idx]
+            n_clusters = optimal_idx + 1
+            
+            print(f"Taglio ottimale a distanza: {cutoff:.2f} ({n_clusters} cluster)")
+            
+            # Plot dendrogramma
+            plt.figure(figsize=(15, 6))
+            dendrogram(Z,
+                    truncate_mode='lastp',
+                    p=12,
+                    color_threshold=cutoff)
+            
+            plt.axhline(y=cutoff, color='r', linestyle='--')
+            plt.title(f"Dendrogramma (Taglio a {cutoff:.2f}, {n_clusters} cluster)")
+            plt.show()
+            
+            agg = AgglomerativeClustering(n_clusters=n_clusters, 
+                                        metric='euclidean',
+                                        linkage='ward')
+            self.df['hierarchical_cluster'] = agg.fit_predict(X)
+            
+            # Visualizzazione comparativa
+            fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(18, 7))
+            
+            sns.scatterplot(data=self.df, 
+                            x=numeric_cols[0], 
+                            y=numeric_cols[1],
+                            hue='kmeans_cluster',
+                            palette='viridis',
+                            ax=ax1)
+            ax1.set_title(f"K-Means (k={best_k})")
+            
+            sns.scatterplot(data=self.df, 
+                            x=numeric_cols[0], 
+                            y=numeric_cols[1],
+                            hue='hierarchical_cluster',
+                            palette='viridis',
+                            ax=ax2)
+            ax2.set_title(f"Gerarchico (k={n_clusters})")
+            
+            plt.tight_layout()
             plt.show()
     
     def _supervised_analysis(self):
