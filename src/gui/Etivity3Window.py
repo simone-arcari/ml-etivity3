@@ -1,6 +1,7 @@
 # ======================================================================================
-# Autore:     [Il tuo nome]
+# Autore:     Simone Arcari
 # Data:       01/05/2025
+#
 # Descrizione:
 #   Questo script implementa una finestra principale in PyQt5 che consente all'utente 
 #   di selezionare un dataset da un elenco e una variabile target da analizzare. 
@@ -10,8 +11,10 @@
 #
 #   - La finestra principale consente la selezione di un dataset e la variabile target.
 #   - Fornisce un pulsante per avviare l'analisi sul dataset selezionato.
+#       > [variabile target selezionata]      --> 
+#       > [variabile target NON selezionata]  --> 
 #   - Un secondo pulsante permette di analizzare la relazione tra due variabili tramite
-#     un dialogo di selezione.
+#     un dialogo di selezione (Test Chi-Quadro).
 # ======================================================================================
 
 import sys
@@ -110,7 +113,6 @@ class DatasetSelectorWindow(QMainWindow):
         for col in df.columns:
             self.target_combo.addItem(col)
 
-        # Salva anche il dataframe corrente per uso futuro (opzionale)
         self.current_df = df
 
     def on_run_clicked(self):
@@ -138,7 +140,6 @@ class DatasetSelectorWindow(QMainWindow):
             self.output.setText("Errore: nessun dataset caricato.")
             return
 
-        # Filtro solo le colonne categoriche (opzionale)
         columns = list(self.current_df.columns)
 
         dialog = VariableSelectorDialog(columns, self)

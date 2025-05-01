@@ -1,6 +1,3 @@
-from sklearn.datasets import load_iris
-import pandas as pd
-
 import os
 import sys
 
@@ -15,8 +12,6 @@ def handle_sigint(signum, frame):
     """Gestisce il segnale SIGINT per terminare l'applicazione"""
     print("Intercettato Ctrl+C, chiusura dell'applicazione...")
     QApplication.quit()
-
-
 
 if __name__ == "__main__":
     print(
@@ -45,29 +40,3 @@ if __name__ == "__main__":
     window = DatasetSelectorWindow()
     window.show()
     sys.exit(app.exec_())
-
-
-
-
-
-
-    # Caricamento dati (esempio con dataset Iris)
-    iris = load_iris()
-    df = pd.DataFrame(data=iris.data, columns=iris.feature_names)
-    df['species'] = iris.target_names[iris.target]
-    
-    # Creazione analizzatore
-    #analyzer = DataAnalyzer(df, target_variable='species')
-    analyzer = DataAnalyzer(df)
-    # Preprocessing
-    analyzer.preprocess_data()
-    
-    # Analisi automatica
-    analyzer.analyze()
-    
-    # Analisi specifica tra due variabili categoriche
-    if 'species' in df.columns and 'petal length (cm)' in df.columns:
-        # Per questo esempio, convertiamo una variabile numerica in categorica
-        df['petal_length_cat'] = pd.cut(df['petal length (cm)'], bins=3, 
-                                       labels=['short', 'medium', 'long'])
-        analyzer._analyze_categorical_relationship('species', 'petal_length_cat')
