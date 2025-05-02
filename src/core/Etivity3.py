@@ -249,6 +249,12 @@ class DataAnalyzer:
             
             plt.tight_layout()
             plt.show()
+
+        # Pulisco Dataframe
+        columns_to_drop = [col for col in ['kmeans_cluster', 'hierarchical_cluster'] if col in self.df.columns]
+        self.df.drop(columns_to_drop, axis=1, inplace=True)
+
+
     
     def _supervised_analysis(self):
         """Analisi supervisionata"""
