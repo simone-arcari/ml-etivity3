@@ -26,9 +26,8 @@ import seaborn as sns
 from scipy.stats import chi2_contingency
 from scipy.cluster.hierarchy import dendrogram, linkage
 
-
 class DataAnalyzer:
-    def __init__(self, data_path, target_variable=None):
+    def __init__(self, data_path, target_variable=None, tuning_data=None):
         """
         Inizializza l'analizzatore di dati.
         
@@ -45,6 +44,15 @@ class DataAnalyzer:
         self.features = [col for col in self.df.columns if col != target_variable]
         self.var_types = {}
         self._detect_variable_types()
+
+        # Tuning delgi algoritmi usati
+        if tuning_data is not None:
+            self.tuning_data = tuning_data
+        else:
+            self.tuning_data = {
+                "OFFSET_HIERARCHICAL_CLUSTERING": 0,
+                "CUTOFF_OFFSET_HIERARCHICAL_CLUSTERING": 0
+            }
         
     def _detect_variable_types(self):
         """
@@ -149,7 +157,7 @@ class DataAnalyzer:
             plt.title(f"Distribuzione di {col}")
             plt.show()
     
-    def _unsupervised_analysis(self, offset=-2):
+    def _unsupervised_analysis(self):
         """Esegue analisi non supervisionata automatica basata sui tipi di variabili.
         
             Strategie applicate:
@@ -162,6 +170,7 @@ class DataAnalyzer:
             - Scatter plot dei cluster K-Means
             - Dendrogramma con taglio ottimale
             - Scatter plot dei cluster gerarchici
+            - (Opzionale) Scatter plot dei cluster reali da colonna target
         """
         print("\n2. ANALISI NON SUPERVISIONATA:")
         
@@ -202,13 +211,15 @@ class DataAnalyzer:
             
             Z = linkage(X, method='ward')
             
-            # Identificazione punto di taglio con offset per evitare cluster troppo piccoli
+            # Identificazione punto di taglio con offset
+            offset = self.tuning_data["OFFSET_HIERARCHICAL_CLUSTERING"]
             last_merges = Z[-10:, 2]
             merge_diffs = np.diff(last_merges[::-1])
             relative_diffs = merge_diffs[:-1]/merge_diffs[1:]
-            optimal_idx = np.argmax(relative_diffs) + 1 + offset  # offset
-            optimal_idx = min(optimal_idx, len(last_merges) - 1)  # sicurezza
-            cutoff = last_merges[::-1][optimal_idx]
+            optimal_idx = np.argmax(relative_diffs) + 1 + offset
+            optimal_idx = min(optimal_idx, len(last_merges) - 1)
+            cutoff_offset = self.tuning_data["CUTOFF_OFFSET_HIERARCHICAL_CLUSTERING"]
+            cutoff = last_merges[::-1][optimal_idx] + cutoff_offset
             n_clusters = optimal_idx + 1
             
             print(f"Taglio ottimale (con offset={offset}) a distanza: {cutoff:.2f} ({n_clusters} cluster)")
@@ -228,33 +239,45 @@ class DataAnalyzer:
                                         metric='euclidean',
                                         linkage='ward')
             self.df['hierarchical_cluster'] = agg.fit_predict(X)
-            
-            # Visualizzazione comparativa
-            fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(18, 7))
-            
+
+            # --- Visualizzazione comparativa ---
+            has_target = 'target' in self.df.columns
+            n_plots = 3 if has_target else 2
+
+            fig, axes = plt.subplots(1, n_plots, figsize=(7 * n_plots, 7))
+
             sns.scatterplot(data=self.df, 
                             x=numeric_cols[0], 
                             y=numeric_cols[1],
                             hue='kmeans_cluster',
                             palette='viridis',
-                            ax=ax1)
-            ax1.set_title(f"K-Means (k={best_k})")
-            
+                            ax=axes[0])
+            axes[0].set_title(f"K-Means (k={best_k})")
+
             sns.scatterplot(data=self.df, 
                             x=numeric_cols[0], 
                             y=numeric_cols[1],
                             hue='hierarchical_cluster',
                             palette='viridis',
-                            ax=ax2)
-            ax2.set_title(f"Gerarchico (k={n_clusters})")
-            
+                            ax=axes[1])
+            axes[1].set_title(f"Gerarchico (k={n_clusters})")
+
+            if has_target:
+                sns.scatterplot(data=self.df, 
+                                x=numeric_cols[0], 
+                                y=numeric_cols[1],
+                                hue='target',
+                                palette='tab10',
+                                ax=axes[2])
+                axes[2].set_title("Cluster Reali (da 'target')")
+
             plt.tight_layout()
             plt.show()
 
         # Pulizia colonne temporanee
         columns_to_drop = [col for col in ['kmeans_cluster', 'hierarchical_cluster'] if col in self.df.columns]
         self.df.drop(columns_to_drop, axis=1, inplace=True)
-    
+
     def _supervised_analysis(self):
         """Analisi supervisionata"""
         print(f"\n3. ANALISI SUPERVISIONATA (target: {self.target}):")

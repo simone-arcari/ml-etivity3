@@ -129,7 +129,8 @@ class DatasetSelectorWindow(QMainWindow):
         tee = Tee(sys.stdout, buffer)
 
         with redirect_stdout(tee):  # stampa sia a terminale che in buffer
-            analyzer = DataAnalyzer(self.current_df, target_selected)
+            from core.data.tuning import TUNING_DATA
+            analyzer = DataAnalyzer(self.current_df, target_selected, TUNING_DATA)
             analyzer.preprocess_data()
             analyzer.analyze()
         
