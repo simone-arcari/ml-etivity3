@@ -149,12 +149,12 @@ class DataAnalyzer:
             plt.title(f"Distribuzione di {col}")
             plt.show()
     
-    def _unsupervised_analysis(self):
+    def _unsupervised_analysis(self, offset=-2):
         """Esegue analisi non supervisionata automatica basata sui tipi di variabili.
-    
+        
             Strategie applicate:
             1. K-Means clustering con selezione ottimale del k usando silhouette score
-            2. Clustering gerarchico con identificazione automatica del punto di taglio
+            2. Clustering gerarchico con identificazione automatica del punto di taglio (modificato)
             3. Visualizzazione comparativa dei risultati
             
             Output:
@@ -167,7 +167,7 @@ class DataAnalyzer:
         
         # Seleziona solo variabili numeriche
         numeric_cols = [col for col, typ in self.var_types.items() 
-                    if typ in ['numeric_continuous', 'numeric_discrete']]
+                        if typ in ['numeric_continuous', 'numeric_discrete']]
         
         if len(numeric_cols) < 2:
             print("Attenzione: Almeno 2 variabili numeriche richieste per il clustering.")
@@ -202,15 +202,16 @@ class DataAnalyzer:
             
             Z = linkage(X, method='ward')
             
-            # Identificazione punto di taglio
+            # Identificazione punto di taglio con offset per evitare cluster troppo piccoli
             last_merges = Z[-10:, 2]
             merge_diffs = np.diff(last_merges[::-1])
             relative_diffs = merge_diffs[:-1]/merge_diffs[1:]
-            optimal_idx = np.argmax(relative_diffs) + 1
+            optimal_idx = np.argmax(relative_diffs) + 1 + offset  # offset
+            optimal_idx = min(optimal_idx, len(last_merges) - 1)  # sicurezza
             cutoff = last_merges[::-1][optimal_idx]
             n_clusters = optimal_idx + 1
             
-            print(f"Taglio ottimale a distanza: {cutoff:.2f} ({n_clusters} cluster)")
+            print(f"Taglio ottimale (con offset={offset}) a distanza: {cutoff:.2f} ({n_clusters} cluster)")
             
             # Plot dendrogramma
             plt.figure(figsize=(15, 6))
@@ -250,11 +251,9 @@ class DataAnalyzer:
             plt.tight_layout()
             plt.show()
 
-        # Pulisco Dataframe
+        # Pulizia colonne temporanee
         columns_to_drop = [col for col in ['kmeans_cluster', 'hierarchical_cluster'] if col in self.df.columns]
         self.df.drop(columns_to_drop, axis=1, inplace=True)
-
-
     
     def _supervised_analysis(self):
         """Analisi supervisionata"""
